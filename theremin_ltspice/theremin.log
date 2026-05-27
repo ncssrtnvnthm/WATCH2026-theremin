@@ -1,0 +1,26 @@
+LTspice 26.0.1 for Windows
+Circuit: C:\users\zlak\Documents\GitHub\WATCH2026-theremin\theremin_ltspice\theremin.net
+Start Time: Thu Mar 26 16:52:29 2026
+C:\users\zlak\Documents\GitHub\WATCH2026-theremin\theremin_ltspice\theremin.net(15): This pin name equals one of the port names of the sub-circuit, but at a different position. This is not a problem, but note that as a result none of the pin names may be used by any .meas expressions.
+X§U1 N003 N007 N010 TMBT3904 ;§pnba 3)1)2
+                                    ^
+C:\users\zlak\Documents\GitHub\WATCH2026-theremin\theremin_ltspice\theremin.net(31): This pin name equals one of the port names of the sub-circuit, but at a different position. This is not a problem, but note that as a result none of the pin names may be used by any .meas expressions.
+X§U2 N008 N016 N017 TMBT3904 ;§pnba 3)1)2
+                                    ^
+solver = Normal
+Maximum thread count: 12
+tnom = 27
+temp = 27
+method = trap
+WARNING: Node n012 is floating.
+WARNING: Node n019 is floating.
+
+.OP point found by inspection.
+.OP point found by inspection.
+Total elapsed time: 0.163 seconds.
+
+Files loaded:
+C:\users\zlak\Documents\GitHub\WATCH2026-theremin\theremin_ltspice\theremin.net
+C:\users\zlak\AppData\Local\LTspice\lib\cmp\standard.dio
+C:\users\zlak\AppData\Local\LTspice\lib\sub\Contrib\Toshiba\BJT\TMBT3904_enc.lib
+

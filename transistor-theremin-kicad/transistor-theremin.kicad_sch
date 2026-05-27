@@ -4550,7 +4550,7 @@
 		)
 	)
 	(symbol
-		(lib_id "Diode:1N5711")
+		(lib_id "Diode:BAT54J")
 		(at 196.85 121.92 270)
 		(unit 1)
 		(exclude_from_sim no)
@@ -4568,7 +4568,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "1N5711"
+		(property "Value" "BAT54J"
 			(at 199.39 122.8724 90)
 			(effects
 				(font
@@ -4577,7 +4577,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal"
+		(property "Footprint" "Diode_SMD:D_SOD-323F"
 			(at 192.405 121.92 0)
 			(effects
 				(font
@@ -4586,7 +4586,7 @@
 				(hide yes)
 			)
 		)
-		(property "Datasheet" "https://www.microsemi.com/document-portal/doc_download/8865-lds-0040-datasheet"
+		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/BAT54J.pdf"
 			(at 196.85 121.92 0)
 			(effects
 				(font
@@ -4595,7 +4595,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "70V 33mA Schottky diode, DO-35"
+		(property "Description" "30V 200mA Schottky diode, SOD-323F"
 			(at 196.85 121.92 0)
 			(effects
 				(font
