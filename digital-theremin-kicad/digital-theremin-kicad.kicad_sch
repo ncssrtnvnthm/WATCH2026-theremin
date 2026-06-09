@@ -3442,15 +3442,25 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "R10 is optional"
+	(text "* R10 is only necessary to use it if you want to drive \nboth channels of the amplifier from a single PWM output."
 		(exclude_from_sim no)
-		(at 119.38 137.668 0)
+		(at 105.156 191.008 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 		)
 		(uuid "3cab39fe-9dad-4c6e-bf04-bc2178d70571")
+	)
+	(text "* Optional "
+		(exclude_from_sim no)
+		(at 127.508 145.288 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "85f1bcac-bd06-4899-8d45-9f3d512c1428")
 	)
 	(junction
 		(at 246.38 148.59)
@@ -3690,16 +3700,6 @@
 	)
 	(wire
 		(pts
-			(xy 139.7 154.94) (xy 139.7 147.32)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "06b70383-6951-420a-8cbf-9d23286d3054")
-	)
-	(wire
-		(pts
 			(xy 218.44 82.55) (xy 241.3 82.55)
 		)
 		(stroke
@@ -3837,6 +3837,16 @@
 			(type default)
 		)
 		(uuid "1d193a57-fd58-4538-9d68-36aeee28ca31")
+	)
+	(wire
+		(pts
+			(xy 127 147.32) (xy 127 154.94)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1d60f04d-4305-42ce-98e5-386ea3d62f61")
 	)
 	(wire
 		(pts
@@ -4110,6 +4120,16 @@
 	)
 	(wire
 		(pts
+			(xy 127 147.32) (xy 143.51 147.32)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4eb418bd-fcfc-4436-b229-82cd283a0fa5")
+	)
+	(wire
+		(pts
 			(xy 137.16 31.75) (xy 137.16 44.45)
 		)
 		(stroke
@@ -4127,6 +4147,16 @@
 			(type default)
 		)
 		(uuid "53ac2766-d06d-4b08-b163-61fba4f08617")
+	)
+	(wire
+		(pts
+			(xy 139.7 144.78) (xy 143.51 144.78)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "559eadc5-3ee1-4806-8ae6-906b524a7c89")
 	)
 	(wire
 		(pts
@@ -4207,16 +4237,6 @@
 			(type default)
 		)
 		(uuid "6525b6de-27df-4ec3-8d4c-69a60ac14f01")
-	)
-	(wire
-		(pts
-			(xy 127 144.78) (xy 143.51 144.78)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "65673735-d182-4ec9-b48d-e2f46f9ec1c4")
 	)
 	(wire
 		(pts
@@ -4850,16 +4870,6 @@
 	)
 	(wire
 		(pts
-			(xy 139.7 147.32) (xy 143.51 147.32)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ccc98924-af4c-4032-be8d-700b9592e0bb")
-	)
-	(wire
-		(pts
 			(xy 195.58 49.53) (xy 198.12 49.53)
 		)
 		(stroke
@@ -4957,16 +4967,6 @@
 			(type default)
 		)
 		(uuid "ddf1b49e-51d6-484a-ace1-faaf04c02e6d")
-	)
-	(wire
-		(pts
-			(xy 127 154.94) (xy 127 144.78)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "de82c6ab-0710-4e59-b184-5ad57bc7f708")
 	)
 	(wire
 		(pts
@@ -5097,6 +5097,16 @@
 			(type default)
 		)
 		(uuid "f48ef8c7-bee3-43b6-86a7-65f66f9e1725")
+	)
+	(wire
+		(pts
+			(xy 139.7 144.78) (xy 139.7 154.94)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f5a3c286-5502-4478-b7d4-ecba3ea2e6f0")
 	)
 	(wire
 		(pts
