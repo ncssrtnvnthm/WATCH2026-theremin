@@ -1,6 +1,8 @@
 /*
  * Digital Theremin
  * Dual VL53L0X + 16-voice synth + SSD1306 display
+ * Optimized: fixed-point, double-buffered DMA, sensor recovery
+ * 
  * A WATCH 2016 Project
  * 
  * Inspired by Luminiferous Theremin created by Derek Woodroffe
@@ -56,6 +58,11 @@ static void check_buttons(void) {
     last_b2 = b2;
 }
 
+static void restart_sensors(void) {
+    sensor_freq.startContinuous(50);
+    if (dual_sensor) sensor_vol.startContinuous(50);
+}
+
 void setup() {
     set_sys_clock_khz(PICOCLOCK, false);
 
@@ -85,10 +92,8 @@ void setup() {
     delay(10);
 
     sensor_freq.setBus(&Wire1);
-    sensor_freq.setTimeout(500);
-    if (!sensor_freq.init()) {
-        while (1) { tight_loop_contents(); }
-    }
+    sensor_freq.setTimeout(100);
+    if (!sensor_freq.init()) while (1) { tight_loop_contents(); }
     sensor_freq.setAddress(I2C_TOF_FREQ_ADDR);
 
     digitalWrite(XSHUT_VOL_PIN, HIGH);
@@ -97,7 +102,7 @@ void setup() {
     Wire1.beginTransmission(I2C_TOF_VOL_ADDR);
     if (Wire1.endTransmission() == 0) {
         sensor_vol.setBus(&Wire1);
-        sensor_vol.setTimeout(500);
+        sensor_vol.setTimeout(100);
         if (sensor_vol.init()) {
             dual_sensor = 1;
             sensor_vol.startContinuous(50);
@@ -115,32 +120,61 @@ void setup() {
 }
 
 void loop() {
-    static uint16_t dist_freq = 0;
-    static uint16_t dist_vol = 0;
-    static uint32_t last_display = 0;
+    static uint16_t dist_freq = 0, dist_vol = 0;
+    static uint16_t last_disp_vol, last_disp_freq, last_disp_f;
+    static uint8_t  last_disp_muted = 0xFF;
+    static uint32_t last_display, last_loop_ms;
+    static uint32_t freq_fails = 0, vol_fails = 0;
 
+    /* ---- I2C watchdog ---- */
+    uint32_t now = millis();
+    if (last_loop_ms && (now - last_loop_ms) > 1000) {
+        restart_sensors();
+        freq_fails = vol_fails = 0;
+    }
+    last_loop_ms = now;
+
+    /* ---- FREQ sensor ---- */
     uint16_t df = sensor_freq.readRangeContinuousMillimeters();
-    if (!sensor_freq.timeoutOccurred() && df < 4096) dist_freq = df;
+    if (!sensor_freq.timeoutOccurred() && df < 4096) {
+        dist_freq = df;
+        freq_fails = 0;
+    } else {
+        if (++freq_fails > 50) {
+            sensor_freq.startContinuous(50);
+            freq_fails = 0;
+        }
+    }
 
-    uint16_t dv = df;
+    /* ---- VOL sensor ---- */
     if (dual_sensor) {
-        dv = sensor_vol.readRangeContinuousMillimeters();
-        if (!sensor_vol.timeoutOccurred() && dv < 4096) dist_vol = dv;
+        uint16_t dv = sensor_vol.readRangeContinuousMillimeters();
+        if (!sensor_vol.timeoutOccurred() && dv < 4096) {
+            dist_vol = dv;
+            vol_fails = 0;
+        } else {
+            if (++vol_fails > 50) {
+                sensor_vol.startContinuous(50);
+                vol_fails = 0;
+            }
+        }
     } else {
         dist_vol = dist_freq;
     }
 
     check_buttons();
 
+    /* ---- frequency (fixed-point) ---- */
     if (dist_freq >= MIN_DISTANCE && dist_freq <= MAX_DISTANCE) {
         int32_t ratio = ((int32_t)(MAX_DISTANCE - dist_freq) << 8) / (MAX_DISTANCE - MIN_DISTANCE);
         int32_t target = (MIN_FREQUENCY << 8) + (ratio * (MAX_FREQUENCY - MIN_FREQUENCY));
-        freq_fp += (target - freq_fp) >> 1; // SMOOTHING ≈ 2 (power of 2 for speed)
+        freq_fp += (target - freq_fp) >> 1;
     }
 
     uint16_t out_freq = apply_effect((uint16_t)(freq_fp >> 8));
     set_freq(out_freq);
 
+    /* ---- volume (fixed-point) ---- */
     if (dist_vol >= MIN_DISTANCE && dist_vol <= MAX_DISTANCE) {
         int32_t vratio = ((int32_t)(MAX_DISTANCE - dist_vol) << 8) / (MAX_DISTANCE - MIN_DISTANCE);
         volume = (uint8_t)((vratio * 255) >> 8);
@@ -150,8 +184,17 @@ void loop() {
         if (!muted) { muted = 1; DoMute(1); }
     }
 
-    if ((uint32_t)(millis() - last_display) > 200) {
-        last_display = millis();
+    /* ---- display: only flush when values change ---- */
+    if (dist_vol   != last_disp_vol   ||
+        dist_freq  != last_disp_freq  ||
+        out_freq   != last_disp_f     ||
+        muted      != last_disp_muted ||
+        (now - last_display) > 1000) {
+        last_disp_vol   = dist_vol;
+        last_disp_freq  = dist_freq;
+        last_disp_f     = out_freq;
+        last_disp_muted = muted;
+        last_display    = now;
         display_update(dist_vol, dist_freq, out_freq, volume, muted);
     }
 }

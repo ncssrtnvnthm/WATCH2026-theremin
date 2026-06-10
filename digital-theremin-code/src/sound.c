@@ -1,6 +1,6 @@
 /**
  * sound.c - wavetable synth, optimized (no float math in hot paths)
- * PWM DMA on GPIO6, 16 voices, 5 effects
+ * Double-buffered DMA, integer math, LUT-based effects
  *
  * SPDX-License-Identifier: BSD-3-Clause
  **/
@@ -31,15 +31,19 @@ union pwm32 {
 };
 
 static uint8_t wavetables[WAVE_COUNT][WAVTABLESIZE];
-static union pwm32 sbuffer[WAVTABLESIZE];
-static union pwm32 *bufferptr = &sbuffer[0];
+
+/* double-buffered DMA output */
+static union pwm32 sbuffer_a[WAVTABLESIZE];
+static union pwm32 sbuffer_b[WAVTABLESIZE];
+static union pwm32 *active_buf = sbuffer_a;
+static union pwm32 *build_buf  = sbuffer_b;
+static union pwm32 *bufferptr  = sbuffer_a;
 
 static uint32_t dmafreq = 64000;
 
 uint8_t mute = 0;
 uint8_t old_mute = 0;
 uint16_t old_freq = 0;
-uint8_t old_volume = 255;
 
 WaveType current_wave = WAVE_SINE;
 EffectType current_effect = FX_NORMAL;
@@ -56,9 +60,11 @@ const char* fx_names[FX_COUNT] = {
 
 static uint PWMslice;
 static int pwm_dma_chan, ctl_dma_chan, ptimer;
+static uint8_t built_volume = 255; /* volume actually in the DMA buffer */
 
-/* ---- wobulate LUT (2^(1/12))^((1/2)*sin(phase)) in 16.16 fixed point ---- */
+/* ---- wobulate LUT in 16.16 fixed point ---- */
 static uint32_t wob_lut[256];
+static uint32_t wob_phase_int;
 
 static void build_wob_lut(void) {
     float st = powf(2.0f, 1.0f / 12.0f);
@@ -68,9 +74,6 @@ static void build_wob_lut(void) {
         wob_lut[i] = (uint32_t)(ratio * 65536.0f + 0.5f);
     }
 }
-
-/* ---- sine LUT for phase -> modulation (0..255 maps to sin*0.5) ---- */
-static uint32_t wob_phase_int; /* fixed-point phase, increments per call */
 
 /* ---- wavetable generators (init only, float OK) ---- */
 
@@ -125,23 +128,39 @@ static void generate_wavetables(void) {
     fill_harmonics(wavetables[WAVE_MUSICBOX], WAVTABLESIZE, 0.4f, 0.3f,0.1f,0.05f,0,0);
 }
 
-/* ---- build DMA buffer with integer math ---- */
-static void build_sbuffer(uint8_t vol) {
+/* ---- build DMA buffer (into inactive buffer, integer math) ---- */
+static uint8_t rebuild_pending = 0;
+static uint8_t rebuild_volume = 255;
+
+static void do_rebuild(void) {
     uint8_t *wt = wavetables[current_wave];
+    uint8_t vol = rebuild_volume;
     for (int i = 0; i < WAVTABLESIZE; i++) {
         int16_t s = (int16_t)(wt[i] - 128) * (int16_t)vol / 255;
         uint8_t v = (uint8_t)(128 + s);
-        sbuffer[i].al = v;
-        sbuffer[i].ah = 0;
-        sbuffer[i].bl = v;
-        sbuffer[i].bh = 0;
+        build_buf[i].al = v;
+        build_buf[i].ah = 0;
+        build_buf[i].bl = v;
+        build_buf[i].bh = 0;
     }
+    /* atomically swap */
+    union pwm32 *tmp = active_buf;
+    active_buf = build_buf;
+    build_buf  = tmp;
+    bufferptr  = active_buf;
+    built_volume = vol;
+    rebuild_pending = 0;
+}
+
+static void trigger_rebuild(uint8_t vol) {
+    rebuild_volume = vol;
+    rebuild_pending = 1;
 }
 
 void init_sound(void) {
     build_wob_lut();
     generate_wavetables();
-    build_sbuffer(255);
+    do_rebuild();
 
     gpio_init(soundIO1);
     gpio_set_dir(soundIO1, GPIO_OUT);
@@ -176,27 +195,30 @@ void init_sound(void) {
 
     dma_channel_configure(pwm_dma_chan, &pwm_cfg,
                           &pwm_hw->slice[PWMslice].cc,
-                          sbuffer, WAVTABLESIZE, false);
+                          active_buf, WAVTABLESIZE, false);
 
     dma_start_channel_mask(1u << ctl_dma_chan);
 }
 
 void set_freq(uint16_t f) {
+    if (rebuild_pending) do_rebuild();
     if (f != old_freq) {
         dmafreq = PICOCLOCK * 1000 / 256 / f;
         dma_timer_set_fraction(ptimer, 1, dmafreq);
+        old_freq = f;
     }
-    old_freq = f;
 }
 
 void set_volume(uint8_t v) {
-    if (abs((int)v - (int)old_volume) >= 4)
-        build_sbuffer(v);
-    old_volume = v;
+    int diff = abs((int)v - (int)built_volume);
+    if (diff >= 4) trigger_rebuild(v);
 }
 
 void set_wave(WaveType w) {
-    if (w != current_wave) { current_wave = w; build_sbuffer(old_volume); }
+    if (w != current_wave) {
+        current_wave = w;
+        trigger_rebuild(built_volume);
+    }
 }
 
 void set_effect(EffectType e) {
