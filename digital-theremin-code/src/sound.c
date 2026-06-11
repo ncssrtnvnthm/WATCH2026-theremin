@@ -43,7 +43,6 @@ static uint32_t dmafreq = 64000;
 
 uint8_t mute = 0;
 uint8_t old_mute = 0;
-uint16_t old_freq = 0;
 
 WaveType current_wave = WAVE_SINE;
 EffectType current_effect = FX_NORMAL;
@@ -55,7 +54,8 @@ const char* wave_names[WAVE_COUNT] = {
 };
 
 const char* fx_names[FX_COUNT] = {
-    "Normal","NoteOnly","WobSlow","WobMed","WobFast"
+    "Normal","NoteOnly","WobSlow","WobMed","WobFast",
+    "Major","Minor"
 };
 
 static uint PWMslice;
@@ -200,12 +200,12 @@ void init_sound(void) {
     dma_start_channel_mask(1u << ctl_dma_chan);
 }
 
-void set_freq(uint16_t f) {
+void set_freq(float f) {
     if (rebuild_pending) do_rebuild();
-    if (f != old_freq) {
-        dmafreq = PICOCLOCK * 1000 / 256 / f;
-        dma_timer_set_fraction(ptimer, 1, dmafreq);
-        old_freq = f;
+    uint32_t new_dmafreq = (uint32_t)(250000000.0f / 256.0f / f + 0.5f);
+    if (new_dmafreq != dmafreq) {
+        dma_timer_set_fraction(ptimer, 1, new_dmafreq);
+        dmafreq = new_dmafreq;
     }
 }
 
@@ -241,10 +241,10 @@ void DoMute(uint8_t m) {
     old_mute = mute;
 }
 
-uint16_t apply_effect(uint16_t f) {
+float apply_effect(uint16_t f) {
     switch (current_effect) {
     case FX_NOTE_ONLY:
-        return find_nearest_note(f);
+        return find_nearest_note((float)f);
     case FX_WOBULATE_SLOW:
     case FX_WOBULATE_MED:
     case FX_WOBULATE_FAST: {
@@ -252,9 +252,13 @@ uint16_t apply_effect(uint16_t f) {
                         (current_effect == FX_WOBULATE_MED) ? 2143 : 3429;
         wob_phase_int += step;
         uint8_t idx = (uint8_t)(wob_phase_int >> 20);
-        return (uint16_t)(((uint32_t)f * wob_lut[idx]) >> 16);
+        return (float)(((uint32_t)f * wob_lut[idx]) >> 16);
     }
+    case FX_MAJOR_SCALE:
+        return find_nearest_in_scale((float)f, major_scale_freqs, SCALE_COUNT);
+    case FX_MINOR_SCALE:
+        return find_nearest_in_scale((float)f, minor_scale_freqs, SCALE_COUNT);
     default:
-        return f;
+        return (float)f;
     }
 }

@@ -17,6 +17,7 @@ typedef enum {
 
 typedef enum {
     FX_NORMAL = 0, FX_NOTE_ONLY, FX_WOBULATE_SLOW, FX_WOBULATE_MED, FX_WOBULATE_FAST,
+    FX_MAJOR_SCALE, FX_MINOR_SCALE,
     FX_COUNT
 } EffectType;
 
@@ -26,12 +27,12 @@ extern WaveType current_wave;
 extern EffectType current_effect;
 
 void init_sound(void);
-void set_freq(uint16_t f);
+void set_freq(float f);
 void set_volume(uint8_t v);
 void set_wave(WaveType w);
 void set_effect(EffectType e);
 void DoMute(uint8_t m);
-uint16_t apply_effect(uint16_t freq);
+float apply_effect(uint16_t freq);
 
 #ifdef __cplusplus
 }

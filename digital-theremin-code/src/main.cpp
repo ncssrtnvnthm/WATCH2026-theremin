@@ -20,6 +20,7 @@
 #include "settings.h"
 #include "sound.h"
 #include "display.h"
+#include "notes.h"
 
 #define MIN_DISTANCE 30
 #define MAX_DISTANCE 450
@@ -167,11 +168,19 @@ void loop() {
     /* ---- frequency (fixed-point) ---- */
     if (dist_freq >= MIN_DISTANCE && dist_freq <= MAX_DISTANCE) {
         int32_t ratio = ((int32_t)(MAX_DISTANCE - dist_freq) << 8) / (MAX_DISTANCE - MIN_DISTANCE);
-        int32_t target = (MIN_FREQUENCY << 8) + (ratio * (MAX_FREQUENCY - MIN_FREQUENCY));
+        int32_t target;
+        if (current_effect == FX_MAJOR_SCALE || current_effect == FX_MINOR_SCALE) {
+            int idx = (ratio * SCALE_COUNT) >> 8;
+            if (idx >= SCALE_COUNT) idx = SCALE_COUNT - 1;
+            const float *scale = (current_effect == FX_MAJOR_SCALE) ? major_scale_freqs : minor_scale_freqs;
+            target = (int32_t)(scale[idx] * 256.0f + 0.5f);
+        } else {
+            target = (MIN_FREQUENCY << 8) + (ratio * (MAX_FREQUENCY - MIN_FREQUENCY));
+        }
         freq_fp += (target - freq_fp) >> 1;
     }
 
-    uint16_t out_freq = apply_effect((uint16_t)(freq_fp >> 8));
+    float out_freq = apply_effect((uint16_t)(freq_fp >> 8));
     set_freq(out_freq);
 
     /* ---- volume (fixed-point) ---- */
@@ -185,16 +194,17 @@ void loop() {
     }
 
     /* ---- display: only flush when values change ---- */
+    uint16_t disp_freq = (uint16_t)(out_freq + 0.5f);
     if (dist_vol   != last_disp_vol   ||
         dist_freq  != last_disp_freq  ||
-        out_freq   != last_disp_f     ||
+        disp_freq  != last_disp_f     ||
         muted      != last_disp_muted ||
         (now - last_display) > 1000) {
         last_disp_vol   = dist_vol;
         last_disp_freq  = dist_freq;
-        last_disp_f     = out_freq;
+        last_disp_f     = disp_freq;
         last_disp_muted = muted;
         last_display    = now;
-        display_update(dist_vol, dist_freq, out_freq, volume, muted);
+        display_update(dist_vol, dist_freq, disp_freq, volume, muted);
     }
 }
